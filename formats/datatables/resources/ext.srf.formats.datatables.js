@@ -558,6 +558,14 @@
 				});
 			}
 
+			// Replace -1 in lengthMenu with 'all' label
+			var showAll = options.lengthMenu.indexOf( -1 );
+			if ( showAll !== -1 ) {
+				var labels = options.lengthMenu.slice();
+				labels[showAll] = mw.msg( 'allmessages-filter-all' ); // stealing MW core messages :D
+				options.lengthMenu = [ options.lengthMenu, labels ];
+			}
+
 			var query = data.query.ask;
 			var printouts = table.data("printouts");
 			var queryString = query.conditions;
@@ -715,14 +723,6 @@
 				};
 
 				conf = $.extend(conf, {
-					// *** attention! deferLoading when used in conjunction with
-					// ajax, expects only the first page of data, if the preloaded
-					// data contain more rows, datatables will show a wrong rows
-					// counter. For this reason we renounce to use deferRender, and
-					// instead we use the following hack: the Ajax function returns
-					// the preloaded data as long they are available for the requested
-					// slice, and then it uses an ajax call for not available data.
-					// deferLoading: table.data("count"),
 					processing: true,
 					serverSide: true,
 					ajax: function (datatableData, callback, settings) {

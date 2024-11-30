@@ -148,9 +148,9 @@ return [
 		],
 		'dependencies' => [
 			'ext.srf',
-			'ext.jquery.jStorage',
 			'ext.jquery.blockUI',
 			'jquery.client',
+			'mediawiki.storage',
 			'mediawiki.Title',
 		],
 		'group' => 'ext.srf'
@@ -942,7 +942,6 @@ return [
 			'carousel/resources/ext.srf.formats.carousel.css'
 		],
 		'dependencies' => [
-			'ext.smw.dataItem',
 			'ext.smw.api',
 			'ext.srf.api',
 			'ext.srf.util',
@@ -968,6 +967,7 @@ return [
 			'ext.srf.widgets'
 		],
 		'messages' => [
+			'allmessages-filter-all',
 			'srf-ui-datatables-label-conditions',
 			'srf-ui-datatables-label-parameters',
 			'srf-ui-datatables-label-filters',
