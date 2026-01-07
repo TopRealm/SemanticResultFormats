@@ -250,7 +250,13 @@ class SRFMath extends ResultPrinter {
 		// Give grep a chance to find the usages:
 		// srf_printername_max, srf_printername_min, srf_printername_sum,
 		// srf_printername_product, srf_printername_average, srf_printername_median
-		return wfMessage( 'srf_printername_' . $this->mFormat )->text();
+		$msg = wfMessage( 'srf_printername_' . $this->mFormat );
+
+		if ( !$msg->exists() ) {
+			$msg = wfMessage( 'srf-printername-' . str_replace( '_', '-', $this->mFormat ) );
+		}
+
+		return $msg->text();
 	}
 
 	/**
