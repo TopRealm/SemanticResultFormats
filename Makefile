@@ -1,13 +1,6 @@
 -include .env
 export
 
-# setup for docker-compose-ci build directory
-# delete "build" directory to update docker-compose-ci
-
-ifeq (,$(wildcard ./build/))
-    $(shell git submodule update --init --remote)
-endif
-
 EXTENSION=SemanticResultFormats
 
 # docker images
@@ -30,6 +23,5 @@ COMPOSER_EXT?=true
 # Enables node.js related tests and "npm install"
 # NODE_JS?=true
 
-# check for build dir and git submodule init if it does not exist
 include build/Makefile
 
