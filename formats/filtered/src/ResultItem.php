@@ -49,7 +49,7 @@ class ResultItem {
 	}
 
 	public function getData( $viewOrFilterId ) {
-		return $this->mItemData[$viewOrFilterId];
+		return $this->mItemData[$viewOrFilterId] ?? null;
 	}
 
 	/**
@@ -75,7 +75,7 @@ class ResultItem {
 
 			$field->reset();
 
-			while ( ( $dataValue = $field->getNextDataValue() ) instanceof SMWDataValue ) {
+			while ( ( $dataValue = $field->getNextDataValue() ) instanceof SMWDataValue ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 
 				$dataItem = $dataValue->getDataItem();
 

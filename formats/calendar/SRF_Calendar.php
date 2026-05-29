@@ -4,6 +4,7 @@ $wgAutoloadClasses['SRFCHistoricalDate'] = __DIR__
 	. '/SRFC_HistoricalDate.php';
 
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use SMW\Query\PrintRequest;
 use SMW\Query\QueryResult;
 use SMW\Query\ResultPrinters\ResultPrinter;
@@ -23,6 +24,7 @@ class SRFCalendar extends ResultPrinter {
 	protected $mRealUserLang = null;
 	protected $mStartMonth;
 	protected $mStartYear;
+	protected $mColors;
 
 	protected function setColors( $colorsText ) {
 		$colors = [];
@@ -36,7 +38,7 @@ class SRFCalendar extends ResultPrinter {
 		$this->mColors = $colors;
 	}
 
-	protected function handleParameters( array $params, $outputmode ) {
+	protected function handleParameters( array $params, $outputmode ): void {
 		parent::handleParameters( $params, $outputmode );
 
 		$this->mTemplate = trim( $params['template'] );
@@ -88,7 +90,8 @@ class SRFCalendar extends ResultPrinter {
 		$events = [];
 
 		// Print all result rows.
-		while ( $row = $res->getNext() ) {
+		$row = $res->getNext();
+		while ( $row !== false ) {
 			$dates = [];
 			$title = $text = $color = '';
 
@@ -104,9 +107,8 @@ class SRFCalendar extends ResultPrinter {
 					$pr = $field->getPrintRequest();
 					$text .= '|' . ( $i + 1 ) . '=';
 
-					while (
-						( $object = $field->getNextDataValue() ) !== false
-					) {
+					$object = $field->getNextDataValue();
+					while ( $object !== false ) {
 						if ( $object->getTypeID() == '_dat' ) {
 							$text .= $object->getLongWikiText();
 
@@ -134,6 +136,7 @@ class SRFCalendar extends ResultPrinter {
 							$dates[$datePropLabel][] =
 								$this->formatDateStr( $object );
 						}
+						$object = $field->getNextDataValue();
 					}
 				}
 			} else {
@@ -149,9 +152,8 @@ class SRFCalendar extends ResultPrinter {
 					// for this property.
 					$textForProperty = '';
 
-					while (
-						( $object = $field->getNextDataValue() ) !== false
-					) {
+					$object = $field->getNextDataValue();
+					while ( $object !== false ) {
 						if ( $object->getTypeID() == '_dat' ) {
 							// Don't add date values to the display.
 
@@ -207,6 +209,7 @@ class SRFCalendar extends ResultPrinter {
 							$dates[$datePropLabel][] =
 								$this->formatDateStr( $object );
 						}
+						$object = $field->getNextDataValue();
 					}
 
 					// Add the text for this property to
@@ -268,6 +271,7 @@ class SRFCalendar extends ResultPrinter {
 					}
 				}
 			}
+			$row = $res->getNext();
 		}
 
 		$result = $this->displayCalendar( $events );
@@ -324,11 +328,11 @@ class SRFCalendar extends ResultPrinter {
 
 		$context = RequestContext::getMain();
 		$request = $context->getRequest();
+		// $parser is only used below as a fallback when $context->getTitle()
+		// returns null (e.g. on special pages served outside a parser context).
+		// NOTE: the mFirstCall cache-expiry hint was removed in MW 1.35 and
+		// is intentionally not replicated here.
 		$parser = MediaWikiServices::getInstance()->getParser();
-		// NOTE: mFirstCall is never false in MW >= 1.35
-		if ( !$parser->mFirstCall ) {
-			$parser->getOutput()->updateCacheExpiry( 0 );
-		}
 
 		$context->getOutput()->addLink(
 			[
@@ -656,7 +660,7 @@ END;
 	 *
 	 * @return array of IParamDefinition|array
 	 */
-	public function getParamDefinitions( array $definitions ) {
+	public function getParamDefinitions( array $definitions ): array {
 		$params = parent::getParamDefinitions( $definitions );
 
 		$params['lang'] = [

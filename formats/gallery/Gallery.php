@@ -2,15 +2,15 @@
 
 namespace SRF;
 
-use Html;
+use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use SMW\Query\PrintRequest;
 use SMW\Query\QueryResult;
 use SMW\Query\ResultPrinters\ResultPrinter;
 use SMWDataItem;
 use SMWOutputs;
 use SRFUtils;
-use Title;
 use TraditionalImageGallery;
 
 /**
@@ -84,10 +84,10 @@ class Gallery extends ResultPrinter {
 		$html = '';
 		$processing = '';
 
-		if ( $this->params['widget'] == 'carousel' ) {
+		if ( $this->params['widget'] === 'carousel' ) {
 			// Carousel widget
 			$ig->setAttributes( $this->getCarouselWidget() );
-		} elseif ( $this->params['widget'] == 'slideshow' ) {
+		} elseif ( $this->params['widget'] === 'slideshow' ) {
 			// Slideshow widget
 			$ig->setAttributes( $this->getSlideshowWidget() );
 		} else {
@@ -153,9 +153,9 @@ class Gallery extends ResultPrinter {
 		}
 
 		// Beautify the class selector
-		$class = $this->params['widget'] ? '-' . $this->params['widget'] . ' ' : '';
+		$class = $this->params['widget'] !== '' ? '-' . $this->params['widget'] . ' ' : '';
 		$class = $this->params['redirects'] !== '' && $this->params['overlay'] === false ? $class . ' srf-redirect' . ' ' : $class;
-		$class = $this->params['class'] ? $class . ' ' . $this->params['class'] : $class;
+		$class = $this->params['class'] !== '' ? $class . ' ' . $this->params['class'] : $class;
 
 		// Separate content from result output
 		if ( !$ig->isEmpty() ) {
@@ -196,8 +196,8 @@ class Gallery extends ResultPrinter {
 	 */
 	protected function addImageProperties( QueryResult $results, &$ig, $imageProperty, $captionProperty, $redirectProperty, $outputMode ) {
 		/* array of \SMW\Query\Result\ResultArray */
-		while (
-		$rows = $results->getNext() ) {
+		// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+		while ( $rows = $results->getNext() ) {
 			$images = [];
 			$captions = [];
 			$redirects = [];
@@ -215,19 +215,19 @@ class Gallery extends ResultPrinter {
 				// Make sure always use real label here otherwise it results in an empty array
 				if ( $resultArray->getPrintRequest()->getLabel() == $imageProperty ) {
 					// Property values
-					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) {
+					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 						if ( $dataValue->getTypeID() == '_wpg' ) {
 							$images[] = $dataValue->getDataItem()->getTitle();
 						}
 					}
 				} elseif ( $label == $captionProperty ) {
 					// Property values
-					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) {
+					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 						$captions[] = $dataValue->getShortText( $outputMode, $this->getLinker( true ) );
 					}
 				} elseif ( $label == $redirectProperty ) {
 					// Property values
-					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) {
+					while ( ( $dataValue = $resultArray->getNextDataValue() ) !== false ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 						if ( $dataValue->getDataItem()->getDIType() == SMWDataItem::TYPE_WIKIPAGE ) {
 							$redirects[] = $dataValue->getTitle();
 						} elseif ( $dataValue->getDataItem()->getDIType() == SMWDataItem::TYPE_URI ) {
@@ -267,7 +267,7 @@ class Gallery extends ResultPrinter {
 	 * @param TraditionalImageGallery &$ig
 	 */
 	protected function addImagePages( QueryResult $results, &$ig ) {
-		while ( $row = $results->getNext() ) {
+		while ( $row = $results->getNext() ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 			/**
 			 * @var \SMW\Query\Result\ResultArray $firstField
 			 */
@@ -310,23 +310,21 @@ class Gallery extends ResultPrinter {
 	 * @param string $imgRedirect
 	 */
 	protected function addImageToGallery( &$ig, Title $imgTitle, $imgCaption, $imgRedirect = '' ) {
-		if ( empty( $imgCaption ) ) {
+		if ( $imgCaption === '' ) {
 			if ( $this->params['autocaptions'] ) {
 				$imgCaption = $imgTitle->getBaseText();
 
 				if ( !$this->params['fileextensions'] ) {
 					$imgCaption = preg_replace( '#\.[^.]+$#', '', $imgCaption );
 				}
-			} else {
-				$imgCaption = '';
 			}
 		} else {
-			if ( $imgTitle instanceof Title && $imgTitle->getNamespace() == NS_FILE && !$this->isSpecialPage() ) {
+			if ( $imgTitle instanceof Title && $imgTitle->getNamespace() === NS_FILE && !$this->isSpecialPage() ) {
 				$imgCaption = $ig->mParser->recursiveTagParse( $imgCaption );
 			}
 		}
 
-		if ( $this->params['captiontemplate'] !== '' && gettype( $ig->mParser ) == "object" ) {
+		if ( $this->params['captiontemplate'] !== '' && is_object( $ig->mParser ) ) {
 			$templateCode = "{{" . $this->params['captiontemplate'] .
 				"|imageraw=" . $imgTitle->getPrefixedText() . "|imagecaption=$imgCaption|imageredirect=$imgRedirect}}";
 
@@ -347,7 +345,7 @@ class Gallery extends ResultPrinter {
 	 * @return string
 	 */
 	private function getImageOverlay() {
-		if ( array_key_exists( 'overlay', $this->params ) && $this->params['overlay'] == true ) {
+		if ( array_key_exists( 'overlay', $this->params ) && $this->params['overlay'] ) {
 			SMWOutputs::requireResource( 'ext.srf.gallery.overlay' );
 			return ' srf-overlay';
 		} else {
@@ -435,7 +433,7 @@ class Gallery extends ResultPrinter {
 	 *
 	 * @return array of IParamDefinition|array
 	 */
-	public function getParamDefinitions( array $definitions ) {
+	public function getParamDefinitions( array $definitions ): array {
 		$params = parent::getParamDefinitions( $definitions );
 
 		$params['class'] = [

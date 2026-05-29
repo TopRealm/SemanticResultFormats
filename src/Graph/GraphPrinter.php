@@ -2,7 +2,7 @@
 
 namespace SRF\Graph;
 
-use Html;
+use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
 use SMW\Query\PrintRequest;
 use SMW\Query\QueryResult;
@@ -98,7 +98,7 @@ class GraphPrinter extends ResultPrinter {
 	/**
 	 * @see ResultPrinter::handleParameters()
 	 */
-	protected function handleParameters( array $params, $outputmode ) {
+	protected function handleParameters( array $params, $outputmode ): void {
 		parent::handleParameters( $params, $outputmode );
 
 		$this->options = new GraphOptions( $params );
@@ -151,7 +151,7 @@ class GraphPrinter extends ResultPrinter {
 		}
 
 		// iterate query result and create SRF\GraphNodes
-		while ( $row = $res->getNext() ) {
+		while ( $row = $res->getNext() ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 			$this->processResultRow( $row );
 		}
 
@@ -212,7 +212,7 @@ class GraphPrinter extends ResultPrinter {
 			$showGraphFieldsPages = $this->options->showGraphFieldsPages();
 			$showGraphFields = $this->options->showGraphFields();
 
-			while ( ( $object = $result_array->getNextDataValue() ) !== false ) {
+			while ( ( $object = $result_array->getNextDataValue() ) !== false ) { // phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 				$hasProperty = $object->getProperty();
 
 				if ( $isPageType ) {
@@ -319,7 +319,7 @@ class GraphPrinter extends ResultPrinter {
 	 *
 	 * @return array of IParamDefinition|array
 	 */
-	public function getParamDefinitions( array $definitions ) {
+	public function getParamDefinitions( array $definitions ): array {
 		$params = parent::getParamDefinitions( $definitions );
 
 		$params['graphname'] = [

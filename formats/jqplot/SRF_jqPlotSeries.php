@@ -1,5 +1,6 @@
 <?php
 
+use MediaWiki\Html\Html;
 use SMW\Query\QueryResult;
 use SMW\Query\ResultPrinters\ResultPrinter;
 
@@ -60,7 +61,8 @@ class SRFjqPlotSeries extends ResultPrinter {
 		$data = [];
 		$data['series'] = [];
 
-		while ( $row = $res->getNext() ) {
+		$row = $res->getNext();
+		while ( $row !== false ) {
 			// Loop over their fields (properties)
 			$label = '';
 			$i = 0;
@@ -84,9 +86,8 @@ class SRFjqPlotSeries extends ResultPrinter {
 				$i == 1 ? $data['fcolumntypeid'] = $field->getPrintRequest()->getTypeID() : '';
 
 				// Loop over all values for the property.
-				while ( (
-					/* SMWDataValue */
-					$object = $field->getNextDataValue() ) !== false ) {
+				$object = $field->getNextDataValue();
+				while ( $object !== false ) {
 
 					if ( $object->getDataItem()->getDIType() == SMWDataItem::TYPE_NUMBER ) {
 						$number = $object->getNumber();
@@ -97,6 +98,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 						// The first column container will not be part of the series container
 						if ( $i == 1 ) {
 							$label = $number;
+							$object = $field->getNextDataValue();
 							continue;
 						}
 
@@ -113,6 +115,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 					} else {
 						$label = $object->getWikiValue();
 					}
+					$object = $field->getNextDataValue();
 				}
 				// Only for array's with numbers
 				if ( count( $rowNumbers ) > 0 ) {
@@ -127,6 +130,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 					}
 				}
 			}
+			$row = $res->getNext();
 		}
 		return $data;
 	}
@@ -140,7 +144,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 	 *
 	 * @return array
 	 */
-	private function getFormatSettings( $data, $options ) {
+	private function getFormatSettings( $data, $options ): array {
 		// Init
 		$dataSet = [];
 		$options['mode'] = 'series';
@@ -261,7 +265,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 	 * @since 1.8
 	 *
 	 *
-	 * @return string
+	 * @return void
 	 */
 	protected function addResources() {
 		// RL module
@@ -372,7 +376,7 @@ class SRFjqPlotSeries extends ResultPrinter {
 	 *
 	 * @return array of IParamDefinition|array
 	 */
-	public function getParamDefinitions( array $definitions ) {
+	public function getParamDefinitions( array $definitions ): array {
 		$params = array_merge( parent::getParamDefinitions( $definitions ), SRFjqPlot::getCommonParams() );
 
 		$params['infotext'] = [
