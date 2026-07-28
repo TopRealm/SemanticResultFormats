@@ -51,7 +51,6 @@ use SMWOutputs;
  *
  * All format specific parameters are optional, although leaving the 'views'
  * parameter empty probably does not make much sense.
- *
  */
 class Filtered extends ResultPrinter {
 
@@ -208,7 +207,7 @@ class Filtered extends ResultPrinter {
 
 		try {
 			$this->fullParams['limit']->getOriginalValue();
-		} catch ( Exception $exception ) {
+		} catch ( Exception ) {
 			$res->getQuery()->setLimit( 0 );
 		}
 
@@ -403,7 +402,7 @@ class Filtered extends ResultPrinter {
 				}
 			}
 
-			$printrequests[$this->uniqid( $printRequest->getHash() )] = $prConfig;
+			$printrequests[] = $prConfig;
 		}
 
 		$filterHtml .= '<div class="filtered-filter-spinner" style="display: none;"><div class="smw-overlay-spinner"></div></div>';
