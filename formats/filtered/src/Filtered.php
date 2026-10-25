@@ -102,6 +102,24 @@ class Filtered extends ResultPrinter {
 			$this->setParser( MediaWikiServices::getInstance()->getParser() );
 		}
 
+		// The shared Parser service may not have been initialized via parse()/
+		// startExternalParse() yet (e.g. in Special:Ask or REST API contexts),
+		// in which case entry points like recursiveTagParse() crash on
+		// uninitialized internal state. Rather than initializing (and thereby
+		// mutating) the shared service instance for the rest of the request,
+		// use a dedicated Parser instance so other consumers of the shared
+		// Parser are unaffected. See issue #802.
+		if ( $this->parser->getOptions() === null ) {
+			$context = \RequestContext::getMain();
+			$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
+			$parser->startExternalParse(
+				$context->getTitle(),
+				\ParserOptions::newFromContext( $context ),
+				\Parser::OT_HTML
+			);
+			$this->setParser( $parser );
+		}
+
 		return $this->parser;
 	}
 
@@ -270,7 +288,6 @@ class Filtered extends ResultPrinter {
 			$previousConfig = $parserOutput->getExtensionData( 'srf-filtered-config' ) ?? [];
 			$previousConfig[$id] = $config;
 			$parserOutput->setExtensionData( 'srf-filtered-config', $previousConfig );
-			$parserOutput->setJsConfigVar( 'srfFilteredConfig', $previousConfig );
 		} else {
 			// Fallback for Special:Ask and other contexts where the parser has not been
 			// initialized with a ParserOutput (Parser::getOutput() returns null before
@@ -351,6 +368,10 @@ class Filtered extends ResultPrinter {
 
 			if ( $printRequest->getData() instanceof PropertyValue ) {
 				$prConfig['property'] = $printRequest->getData()->getInceptiveProperty()->getKey();
+
+			// @see SMW\Query\Result\ResultArray -> getNextDataValue
+			} elseif ( $prConfig['mode'] === PrintRequest::PRINT_CHAIN ) {
+				$prConfig['property'] = $printRequest->getData()->getLastPropertyChainValue()->getDataItem()->getKey();
 			}
 
 			if ( filter_var( $printRequest->getParameter( 'hide' ), FILTER_VALIDATE_BOOLEAN ) ) {

@@ -212,7 +212,7 @@ class ArrayPrinter extends ResultPrinter {
 
 		if ( defined( 'ExtArrays::VERSION' ) || class_exists( 'ExtArrays' ) ) {
 			$parser = MediaWikiServices::getInstance()->getParser();
-			ExtArrays::get( $parser )->createArray( $arrayId, $array );
+			\ExtArrays::get( $parser )->createArray( $arrayId, $array );
 			return true;
 		}
 
@@ -303,7 +303,7 @@ class ArrayPrinter extends ResultPrinter {
 		}
 
 		$this->mMainLabelHack = trim( $params['mainlabel'] ) === '-';
-		$this->mShowPageTitles = strtolower( $params['titles'] ) !== 'hide';
+		$this->mShowPageTitles = strtolower( $params['titles'] ?? 'show' ) !== 'hide';
 
 		switch ( strtolower( $params['hidegaps'] ) ) {
 			case 'none':

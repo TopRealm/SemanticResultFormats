@@ -207,6 +207,7 @@ return [
         ],
         'formats/filtered/src/Filtered.php' => [
             'PhanUndeclaredClass' => ['\\SRF\\Filtered\\Filtered::addError', '\\SRF\\Filtered\\Filtered::getLinker', '\\SRF\\Filtered\\Filtered::getParamDefinitions', '\\SRF\\Filtered\\Filtered::handleParameters'],
+            'PhanUndeclaredClassConstant' => ['\\SRF\\Filtered\\Filtered::getFilterHtml'],
             'PhanUndeclaredClassInstanceof' => ['\\SRF\\Filtered\\Filtered::getFilterHtml'],
             'PhanUndeclaredClassMethod' => ['\\SRF\\Filtered\\Filtered::getFilterHtml', '\\SRF\\Filtered\\Filtered::getResultText', '\\SRF\\Filtered\\Filtered::getViewHtml', '\\SRF\\Filtered\\Filtered::registerResourceModules'],
             'PhanUndeclaredExtendedClass' => ['formats/filtered/src/Filtered.php'],
@@ -485,7 +486,7 @@ return [
             'PhanUndeclaredClass' => ['\\SRF\\ArrayFormat\\ArrayPrinter::__construct', '\\SRF\\ArrayFormat\\ArrayPrinter::getParamDefinitions', '\\SRF\\ArrayFormat\\ArrayPrinter::handleParameters'],
             'PhanUndeclaredClassConstant' => ['\\SRF\\ArrayFormat\\ArrayPrinter::createArray', '\\SRF\\ArrayFormat\\ArrayPrinter::getCfgSepText', '\\SRF\\ArrayFormat\\ArrayPrinter::getQueryMode'],
             'PhanUndeclaredClassInstanceof' => ['\\SRF\\ArrayFormat\\ArrayPrinter::getResultText'],
-            'PhanUndeclaredClassMethod' => ['\\SRF\\ArrayFormat\\ArrayPrinter::createArray', '\\SRF\\ArrayFormat\\ArrayPrinter::deliverPropertiesManyValues', '\\SRF\\ArrayFormat\\ArrayPrinter::getResultText'],
+            'PhanUndeclaredClassMethod' => ['\\SRF\\ArrayFormat\\ArrayPrinter::deliverPropertiesManyValues', '\\SRF\\ArrayFormat\\ArrayPrinter::getResultText'],
             'PhanUndeclaredConstant' => ['\\SRF\\ArrayFormat\\ArrayPrinter::deliverPropertiesManyValues'],
             'PhanUndeclaredExtendedClass' => ['src/ArrayFormat/ArrayPrinter.php'],
             'PhanUndeclaredMethod' => ['\\SRF\\ArrayFormat\\ArrayPrinter::getCfgSepText'],
