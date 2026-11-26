@@ -2,10 +2,38 @@ These are the release notes for the [Semantic Result Formats](https://www.semant
 
 ## SRF 6.0.2
 
-Released on TBD.
+Released on November 25, 2026.
+
+### New Features and Enhancements
+
+* Added the template parameter `#rownumber` (counting from 1, as in the template format of Semantic MediaWiki) to the list view of the `filtered` format; `#` keeps its zero-based number ([490](https://github.com/SemanticMediaWiki/SemanticResultFormats/issues/490)) (by [gesinn.it](https://gesinn.it))
+
+### Compatibility Changes
+
+* The QUnit tests of the extension now need Node.js 22.22 or later (jsdom 31) (by [gesinn.it](https://gesinn.it))
+* Updated the jQuery type definitions used to build the `filtered` format from jQuery 2 to jQuery 3, which the build already ran against; the delivered bundle is unchanged (by [gesinn.it](https://gesinn.it))
+* Updated the npm development dependencies of the extension and of the `filtered` format to fix known vulnerabilities in the build and test tooling; the delivered bundle is unchanged (by [gesinn.it](https://gesinn.it))
 
 ### Bug Fixes
 
+* Fixed the number filter of the `filtered` format showing the date format of a date printout (e.g. `-F[Y]`) as the caption of its slider; a caption set with `number filter label` is still shown (by [gesinn.it](https://gesinn.it))
+* Fixed the number filter of the `filtered` format adding a `false` value for a date that has no year number, which broke the range of the slider (by [gesinn.it](https://gesinn.it))
+* Fixed the search panes of the `datatables` format using the value of the previous row for a property-valued printout, which selected the wrong rows (by [gesinn.it](https://gesinn.it))
+* Fixed the `d3` format and the pie and donut charts of the `jqplot` format producing a PHP warning and no chart data when every value is below `min` (by [gesinn.it](https://gesinn.it))
+* Fixed PHP warnings and `TypeError`s of the `dataframe` format with an empty result, of the `datatables` format without printouts, and of the `jitgraph` format and array configuration texts caused by variables that were not set (by [gesinn.it](https://gesinn.it))
+* Fixed the map view of the `filtered` format failing with a fatal error when a marker icon name starts with a namespace other than `File:`; the name is reported as an error instead (by [gesinn.it](https://gesinn.it))
+* Fixed the map view of the `filtered` format failing with a `TypeError` when a marker icon is not a valid file name; the name is reported as an error instead (by [gesinn.it](https://gesinn.it))
+* Fixed the table view of the `filtered` format giving cells the CSS class of another column when a printout is hidden, and no column class at all with `headers=hide` (by [gesinn.it](https://gesinn.it))
+* Fixed the view selector of the `filtered` format not marking the selected view when its label contains markup (by [gesinn.it](https://gesinn.it))
+* Fixed the map view of the `filtered` format showing no printout labels in marker popups, `[object Object]` when the first printout is a coordinate, no GeoJSON overlay on a map without markers, and no map at all for an unknown map provider (by [gesinn.it](https://gesinn.it))
+* Fixed the calendar view of the `filtered` format ignoring the parameters `calendar view start`, `calendar view end`, `calendar view title` and `calendar view title template`, and the title template getting empty values (by [gesinn.it](https://gesinn.it))
+* Fixed the list view of the `filtered` format ignoring `headers=hide` and `headers=plain` (by [gesinn.it](https://gesinn.it))
+* Fixed the distance filter of the `filtered` format hiding every result when its origin is missing or invalid, instead of ignoring the filter (by [gesinn.it](https://gesinn.it))
+* Fixed the number filter of the `filtered` format only using the first value of a printout with several values, so the slider and the filter ignored the others (by [gesinn.it](https://gesinn.it))
+* Fixed the number and distance filter of the `filtered` format failing with a fatal error on a property chain such as `?Has city.Population`, and matching a different printout of the same property (by [gesinn.it](https://gesinn.it))
+* Fixed the `filtered` format showing printout labels, filter values, number filter captions and invalid values as HTML instead of plain text, which also broke filter options whose value contains `"`, `&` or `<` (by [gesinn.it](https://gesinn.it))
+* Fixed the `map` view of the `filtered` format never finishing (endless loop until the PHP time or memory limit) when a text property used as marker position contains a value that is not a valid coordinate (by [gesinn.it](https://gesinn.it))
+* Fixed the `filtered` format showing no filters and views when the query uses `|@deferred`, because its configuration was not part of the parse API response that Semantic MediaWiki loads the result from ([447](https://github.com/SemanticMediaWiki/SemanticResultFormats/issues/447)) (by [gesinn.it](https://gesinn.it))
 * Fixed the `spreadsheet` format turning a printout label that starts with `=` into a spreadsheet formula, and writing `csv` text values that start with `=`, `+`, `-`, `@`, a tab or a carriage return unprefixed, so that a spreadsheet application evaluated them as formulas (CSV injection) ([1176](https://github.com/SemanticMediaWiki/SemanticResultFormats/issues/1176)) (by [gesinn.it](https://gesinn.it))
 * Fixed the `filename` parameter of the `spreadsheet` format being able to break out of the quoted `filename` of the `Content-Disposition` header ([1176](https://github.com/SemanticMediaWiki/SemanticResultFormats/issues/1176)) (by [gesinn.it](https://gesinn.it))
 

@@ -14,15 +14,20 @@ export class DistanceFilter extends Filter {
 
 	private earthRadiusValue: number = DistanceFilter.earthRadius.km;
 	private filterValue: number = 0;
+	private hasOrigin: boolean = false;
 
 	public init() {
 
 		let origin = this.options[ 'origin' ];
 
 		if ( !( origin !== undefined && origin.hasOwnProperty( 'lat' ) && origin.hasOwnProperty( 'lng' ) ) ) {
+			// no usable origin (the server has reported it): without distances there is nothing to
+			// filter by, so the filter must not hide any rows
 			this.target.detach();
 			return;
 		}
+
+		this.hasOrigin = true;
 
 		let unit = 'km';
 
@@ -66,11 +71,11 @@ export class DistanceFilter extends Filter {
 				value: that.filterValue,
 				step: precision / 100
 			} )
-			.on( 'slidechange', undefined, { 'filter': that }, function ( eventObject: JQueryEventObject, ui: any ) {
+			.on( 'slidechange', undefined, { 'filter': that }, function ( eventObject: JQuery.TriggeredEvent, ui: any ) {
 				eventObject.data.ui = ui;
 				eventObject.data.filter.onFilterUpdated( eventObject );
 			} )
-			.on( 'slide', undefined, { 'filter': that }, function ( eventObject: JQueryEventObject, ui: any ) {
+			.on( 'slide', undefined, { 'filter': that }, function ( eventObject: JQuery.TriggeredEvent, ui: any ) {
 				readout.text( ui.value );
 			} )
 			.find( '.ui-slider-handle' )
@@ -122,7 +127,7 @@ export class DistanceFilter extends Filter {
 		return slot ? slot.v : undefined;
 	}
 
-	public onFilterUpdated( eventObject: JQueryEventObject ) {
+	public onFilterUpdated( eventObject: JQuery.TriggeredEvent ) {
 		this.filterValue = eventObject.data.ui.value;
 		this.controller.onFilterUpdated( this.getId() );
 	}
@@ -144,6 +149,10 @@ export class DistanceFilter extends Filter {
 	}
 
 	public isVisible( rowId: string ): boolean {
+
+		if ( !this.hasOrigin ) {
+			return true;
+		}
 
 		let rowdata = this.controller.getData()[ rowId ].d;
 

@@ -12,12 +12,14 @@
 		"rootDir": "../../formats/filtered/resources/ts"
 	},
 	"include": [
+		"../../formats/filtered/resources/ts/bootstrap.ts",
 		"../../formats/filtered/resources/ts/Filtered/Controller.ts",
 		"../../formats/filtered/resources/ts/Filtered/ViewSelector.ts",
 		"../../formats/filtered/resources/ts/Filtered/View/View.ts",
 		"../../formats/filtered/resources/ts/Filtered/View/MapView.ts",
 		"../../formats/filtered/resources/ts/Filtered/Filter/Filter.ts",
 		"../../formats/filtered/resources/ts/Filtered/Filter/ValueFilter.ts",
+		"../../formats/filtered/resources/ts/Filtered/Filter/NumberFilter.ts",
 		"../../formats/filtered/resources/ts/Filtered/Filter/DistanceFilter.ts"
 	]
 }

@@ -9,6 +9,33 @@ on:
 
 jobs:
 
+  # The compiled bundle is committed, so a change to the TypeScript sources
+  # without a rebuilt bundle would silently ship the old behaviour.
+  filtered-bundle:
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Rebuild the filtered bundle (npm postinstall runs gulp)
+        run: npm --prefix formats/filtered ci
+
+      - name: Check that the committed bundle is up to date
+        # Only the bundle built from our own sources. The vendored copies that gulp
+        # also writes (e.g. select2) follow the dependency versions and are tracked
+        # separately.
+        run: >
+          git diff --exit-code --
+          formats/filtered/resources/js/ext.srf.filtered.js
+          formats/filtered/resources/js/ext.srf.filtered.js.map
+
   test:
 
     runs-on: ubuntu-24.04
@@ -18,39 +45,28 @@ jobs:
       matrix:
         include:
           - mediawiki_version: '1.43'
-            smw_version: 7.2.0
             php_version: 8.2
             mm_version: 6.0.1
             phpspreadsheet_version: '1.30.5'
+            smw_version: 7.4.1
             database_type: mysql
             database_image: "mariadb:11.2"
             coverage: false
             experimental: false
           - mediawiki_version: '1.43'
-            smw_version: 7.2.0
-            pf_version: 5.9
-            sfs_version: 5.0.0
             php_version: 8.3
             mm_version: 6.0.2
             phpspreadsheet_version: '1.30.5'
+            smw_version: 7.4.1
             database_type: mysql
             database_image: "mariadb:11.2"
             coverage: true
             experimental: false
-          - mediawiki_version: '1.45'
-            smw_version: 7.2.0
-            php_version: 8.4
-            mm_version: 6.0.1
-            phpspreadsheet_version: '^5.6'
-            database_type: mysql
-            database_image: "mariadb:11.2"
-            coverage: false
-            experimental: false
           - mediawiki_version: '1.46'
-            smw_version: 7.2.0
             php_version: 8.4
             mm_version: 6.0.1
             phpspreadsheet_version: '^5.6'
+            smw_version: 7.4.1
             database_type: mysql
             database_image: "mariadb:12.3"
             coverage: false
@@ -59,8 +75,6 @@ jobs:
     env:
       MW_VERSION: ${{ matrix.mediawiki_version }}
       SMW_VERSION: ${{ matrix.smw_version }}
-      PF_VERSION: ${{ matrix.pf_version }}
-      SFS_VERSION: ${{ matrix.sfs_version }}
       PHP_VERSION: ${{ matrix.php_version }}
       DB_TYPE: ${{ matrix.database_type }}
       DB_IMAGE: ${{ matrix.database_image }}
@@ -72,7 +86,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
                    
       - name: Run tests
         run: make ci
@@ -87,7 +103,7 @@ jobs:
         if: matrix.coverage == true
 
       - name: Upload code coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           # Coverage files are written into the Docker volume mounted at

@@ -2,7 +2,9 @@
 
 namespace SRF\Tests\Filtered;
 
+use SMW\DataValues\PropertyValue;
 use SRF\Filtered\Filtered;
+use SRF\Filtered\ResultItem;
 use SRF\Filtered\View\MapsGeoJsonProvider;
 use SRF\Filtered\View\MapsLayerDefinitionsProvider;
 use SRF\Filtered\View\MapView;
@@ -134,6 +136,79 @@ class MapViewTest extends \PHPUnit\Framework\TestCase {
 		$view = $this->newMapView( $this->mapViewParams() );
 
 		$this->assertNull( $view->getInitError() );
+	}
+
+	public function testInvalidCoordinateInTextPropertyIsReportedOnceAndDoesNotLoopForever() {
+		$printer = new class( null ) extends Filtered {
+			public array $errors = [];
+
+			public function addError( $errorMessage ): void {
+				$this->errors[] = $errorMessage;
+				// A loop that never advances would add the same error forever.
+				if ( count( $this->errors ) > 3 ) {
+					throw new \LogicException( 'getJsDataForRow() keeps reporting the same error' );
+				}
+			}
+		};
+		$results = [];
+		$params = $this->mapViewParams( [ 'map view marker position property' => 'Position' ] );
+		$view = new MapView( $results, $params, $printer );
+
+		$items = [ new \SMWDIBlob( 'not a coordinate' ), new \SMWDIBlob( '52.5, 13.4' ), false ];
+		$field = $this->createMock( \SMW\Query\Result\ResultArray::class );
+		$field->method( 'getPrintRequest' )->willReturn( $this->newPrintRequest( 'Position' ) );
+		$field->method( 'getNextDataItem' )->willReturnCallback( static function () use ( &$items ) {
+			return array_shift( $items );
+		} );
+
+		$row = $this->createMock( ResultItem::class );
+		$row->method( 'getValue' )->willReturn( [ $field ] );
+
+		$data = $view->getJsDataForRow( $row );
+
+		$this->assertCount( 1, $printer->errors );
+		$this->assertSame( [ [ 'lat' => 52.5, 'lng' => 13.4 ] ], $data['positions'] );
+	}
+
+	public function testInvalidMarkerIconNameIsReportedAndDoesNotBreakTheConfig() {
+		$printer = $this->newRecordingPrinter();
+		$results = [];
+		$params = $this->mapViewParams( [ 'map view marker icons' => [ 'cafe=Bad[name', 'also bad|name' ] ] );
+		$view = new MapView( $results, $params, $printer );
+		$view->setMapProvider( 'OpenStreetMap.Mapnik' );
+		$view->setMapProviderDark( '' );
+
+		$config = $view->getJsConfig();
+
+		$this->assertSame( [], $config['marker icons'], 'no icon is configured for an invalid file name' );
+		$this->assertCount( 2, $printer->errors, 'every invalid file name is reported' );
+	}
+
+	public function testMarkerIconNameOutsideTheFileNamespaceIsReportedAndDoesNotBreakTheConfig() {
+		$printer = $this->newRecordingPrinter();
+		$results = [];
+		$params = $this->mapViewParams( [ 'map view marker icons' => [ 'cafe=Talk:Cafe.png' ] ] );
+		$view = new MapView( $results, $params, $printer );
+		$view->setMapProvider( 'OpenStreetMap.Mapnik' );
+		$view->setMapProviderDark( '' );
+
+		$config = $view->getJsConfig();
+
+		$this->assertSame( [], $config['marker icons'] );
+		$this->assertCount( 1, $printer->errors, 'the name is reported' );
+	}
+
+	private function newPrintRequest( string $propertyName ): \SMW\Query\PrintRequest {
+		$property = $this->createMock( \SMW\DIProperty::class );
+		$property->method( 'getKey' )->willReturn( $propertyName );
+
+		$data = $this->createMock( PropertyValue::class );
+		$data->method( 'getInceptiveProperty' )->willReturn( $property );
+
+		$printRequest = $this->createMock( \SMW\Query\PrintRequest::class );
+		$printRequest->method( 'getData' )->willReturn( $data );
+
+		return $printRequest;
 	}
 
 	private function newMapView(
