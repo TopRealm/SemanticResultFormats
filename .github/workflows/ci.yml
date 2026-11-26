@@ -90,9 +90,6 @@ jobs:
         with:
           submodules: recursive
                    
-      - name: Update submodules
-        run: git submodule update --init --remote
-
       - name: Run tests
         run: make ci
         if: matrix.coverage == false
