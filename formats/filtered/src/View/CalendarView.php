@@ -33,6 +33,7 @@ class CalendarView extends View {
 	private $end;
 	private $title;
 	private $titleTemplate;
+	private bool $parametersHandled = false;
 
 	/**
 	 * @param ResultItem $row
@@ -40,6 +41,12 @@ class CalendarView extends View {
 	 * @return array
 	 */
 	public function getJsDataForRow( ResultItem $row ) {
+		// read start, end, title and title template once, before the first row is evaluated
+		if ( !$this->parametersHandled ) {
+			$this->parametersHandled = true;
+			$this->handleParameters();
+		}
+
 		$value = $row->getValue();
 		$data = [];
 		$wikitext = '';
@@ -76,6 +83,7 @@ class CalendarView extends View {
 				// found specified column for title
 				if ( $datavalue !== false ) {
 					if ( $datavalue instanceof \SMWWikiPageValue ) {
+						// @phan-suppress-next-line PhanUndeclaredMethod the data item of a page value is a DIWikiPage
 						$data['url'] = $datavalue->getDataItem()->getTitle()->getLocalURL();
 					}
 					$data['title'] = $datavalue->getShortHTMLText();
@@ -89,6 +97,8 @@ class CalendarView extends View {
 				) === false ) {
 
 				$params = [];
+				// the first value was read above for the dates and the title, start over for the template
+				$field->reset();
 				// phpcs:ignore Generic.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
 				while ( ( $text = $field->getNextText(
 						SMW_OUTPUT_WIKI,

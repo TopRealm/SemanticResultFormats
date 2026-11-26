@@ -46,6 +46,14 @@ function createDom() {
 	require( 'leaflet.markercluster' );
 	require( 'leaflet-providers' );
 
+	// fullcalendar.js (vendored under resources/jquery/fullcalendar/, MediaWiki
+	// ships it via ResourceLoader) requires('moment') internally, which Node
+	// resolves from node_modules; the vendored moment.js there is a
+	// browser-global build with no CommonJS export, so the npm 'moment'
+	// package is a devDependency purely to satisfy that require() — it is
+	// never read as `moment` or `global.moment` anywhere in this suite.
+	require( path.resolve( __dirname, '../../resources/jquery/fullcalendar/fullcalendar.js' ) );
+
 	// MediaWiki's bundled jquery.ui.widget.js still sets widgetBaseClass (removed
 	// upstream in modern jQuery UI, see jqueryui/jquery-ui#8155); srf widgets rely
 	// on it, so restore it here to match the runtime they actually ship against.
@@ -97,9 +105,13 @@ function htmlElement( tagName, attrs, contents ) {
  * @return {function(): void} a function to reset mw between tests
  */
 function prepareMediaWiki() {
+	// shared by every mw instance, as modules keep the instance they were loaded with
+	let messageValues;
+
 	return () => {
+		messageValues = {};
 		const configValues = {
-			'srf-config': { settings: { srfgScriptPath: '/srf' }, version: '1.0.0' },
+			'srf-config': { settings: { srfgScriptPath: '/srf', wgThumbLimits: [ 120, 150, 180, 200, 250, 300 ] }, version: '1.0.0' },
 			wgScriptPath: '/w',
 			wgArticlePath: '/wiki/$1',
 			wgServer: 'http://localhost'
@@ -110,12 +122,21 @@ function prepareMediaWiki() {
 			loader: {
 				using: () => Promise.resolve()
 			},
-			message: ( key ) => ( {
-				text: () => key,
-				escaped: () => key,
-				parse: () => key
-			} ),
-			msg: () => '',
+			message: ( key ) => {
+				const text = messageValues[ key ] || key;
+
+				return {
+					text: () => text,
+					escaped: () => escapeAttribute( text ),
+					parse: () => text
+				};
+			},
+			messages: {
+				set: ( key, value ) => {
+					messageValues[ key ] = value;
+				}
+			},
+			msg: ( key ) => messageValues[ key ] || '',
 			html: {
 				element: htmlElement,
 				Raw: Raw

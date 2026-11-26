@@ -58,7 +58,12 @@ class ListView extends View {
 		$this->mNamedArgs = $params['list view named args'];
 		$this->mUserParam = $params['list view userparam'];
 
-		$this->mShowHeaders = $params['headers'];
+		// 'show', 'hide' or 'plain' as given on the page; the comparisons below use SMW's constants
+		$this->mShowHeaders = match ( $params['headers'] ) {
+			'hide' => SMW_HEADERS_HIDE,
+			'plain' => SMW_HEADERS_PLAIN,
+			default => SMW_HEADERS_SHOW,
+		};
 		$this->mSep = $params['sep'];
 	}
 
@@ -175,7 +180,9 @@ class ListView extends View {
 				}
 			}
 
-			$wikitext .= "|#=$rownum";
+			// #rownumber counts from 1 like the template format of Semantic MediaWiki; #= is the
+			// original zero-based number and stays for existing templates
+			$wikitext .= "|#=$rownum|#rownumber=" . ( $rownum + 1 );
 			$result .= '{{' . $this->mTemplate . $wikitext . '}}';
 
 		} else {

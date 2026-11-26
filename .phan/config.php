@@ -20,4 +20,44 @@ $cfg['exclude_analysis_directory_list'] = array_merge(
 	]
 );
 
+// Make optional dependency extensions visible to Phan's type-checker: those
+// activated in the Makefile / ci.yml matrix. mediawiki-phan-config only adds
+// MW core and MW vendor to directory_list by default, never extensions/.
+// Without this, calls into an optional extension's classes either surface as
+// PhanUndeclaredClass* noise, or (for unqualified class references resolved
+// relative to the current namespace) are silently skipped by Phan instead of
+// being checked against the dependency's actual API.
+$IP = getenv( 'MW_INSTALL_PATH' ) !== false
+	? str_replace( '\\', '/', getenv( 'MW_INSTALL_PATH' ) )
+	: '../..';
+
+$dependencyExtensions = [
+	'Arrays',
+	// SMW is installed in every CI leg; its classes are what most of this extension calls into
+	'SemanticMediaWiki',
+];
+
+foreach ( $dependencyExtensions as $ext ) {
+	$cfg['directory_list'][] = $IP . '/extensions/' . $ext;
+	$cfg['exclude_analysis_directory_list'][] = $IP . '/extensions/' . $ext;
+}
+
+// The libraries and root files this extension brings itself: only parsed, so that their classes
+// are known (SRFUtils, LatLongParser, the tree classes), not analysed.
+$ownDependencies = [
+	'vendor/nicmart/tree',
+	'vendor/data-values/common',
+	'vendor/data-values/geo',
+	'vendor/data-values/interfaces',
+	'SemanticResultFormats.hooks.php',
+	'SemanticResultFormats.parser.php',
+	'SemanticResultFormats.php',
+	'SemanticResultFormats.utils.php',
+];
+
+foreach ( $ownDependencies as $dependency ) {
+	$cfg['directory_list'][] = $dependency;
+	$cfg['exclude_analysis_directory_list'][] = $dependency;
+}
+
 return $cfg;

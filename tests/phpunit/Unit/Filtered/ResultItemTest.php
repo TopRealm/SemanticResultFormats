@@ -4,12 +4,14 @@ namespace SRF\Tests\Filtered;
 
 use Collation;
 use MediaWiki\MediaWikiServices;
+use SMW\DataValues\WikiPageValue;
 use SMW\DIWikiPage;
 use SMW\MediaWiki\Collator;
 use SMW\Query\PrintRequest;
 use SMW\Query\Result\ResultArray;
 use SMWDataValue;
 use SMWDIGeoCoord;
+use SMWErrorValue;
 use SRF\Filtered\Filtered;
 use SRF\Filtered\ResultItem;
 
@@ -108,6 +110,23 @@ class ResultItemTest extends \PHPUnit\Framework\TestCase {
 		$this->assertSame( [ 'v' => [ 'abc' ] ], $representation['p'][0] );
 	}
 
+	public function testErrorValueIsEscapedInTheFormattedOutput() {
+		$printer = new Filtered( null );
+		$blob = $this->createStub( \SMWDIBlob::class );
+		$blob->method( 'getSerialization' )->willReturn( '<img src=x onerror=alert(1)> & "q"' );
+		$errorValue = $this->createStub( SMWErrorValue::class );
+		$errorValue->method( 'getDataItem' )->willReturn( $blob );
+		$errorValue->method( 'getShortWikiText' )->willReturn( 'broken' );
+		$field = $this->newField( [ $errorValue ] );
+
+		$representation = ( new ResultItem( [ $field ], $printer ) )->getArrayRepresentation();
+
+		$this->assertSame(
+			[ '&lt;img src=x onerror=alert(1)&gt; &amp; &quot;q&quot;' ],
+			$representation['p'][0]['f']
+		);
+	}
+
 	public function testGeoCoordinateIsSerializedAsLatLngPairWithSortKey() {
 		$printer = new Filtered( null );
 		$field = $this->newField( [
@@ -169,6 +188,70 @@ class ResultItemTest extends \PHPUnit\Framework\TestCase {
 		$representation = ( new ResultItem( [ $field ], $printer ) )->getArrayRepresentation();
 
 		$this->assertArrayNotHasKey( 'd', $representation );
+	}
+
+	public function testDisplayTitleIsUsedAsFormattedValueWhenLinkIsNoneIssue561() {
+		$printer = new Filtered( null );
+		$this->setLinking( $printer, false );
+
+		$field = $this->newField( [
+			$this->newWikiPageValueWithDisplayTitle( 'Foo', 'Foo', 'Foo', 'Display Foo' ),
+		] );
+
+		$representation = ( new ResultItem( [ $field ], $printer ) )->getArrayRepresentation();
+
+		$this->assertSame(
+			[
+				'v' => [ 'Foo' ],
+				'f' => [ 'Display Foo' ],
+				's' => [ '466f6f' ],
+			],
+			$representation['p'][0]
+		);
+	}
+
+	public function testRawTitleIsKeptWhenLinkIsNoneAndNoDisplayTitleIsSetIssue561() {
+		$printer = new Filtered( null );
+		$this->setLinking( $printer, false );
+
+		$field = $this->newField( [
+			$this->newWikiPageValueWithDisplayTitle( 'Foo', 'Foo', 'Foo', '' ),
+		] );
+
+		$representation = ( new ResultItem( [ $field ], $printer ) )->getArrayRepresentation();
+
+		$this->assertSame(
+			[
+				'v' => [ 'Foo' ],
+				's' => [ '466f6f' ],
+			],
+			$representation['p'][0]
+		);
+	}
+
+	private function setLinking( Filtered $printer, bool $linked ): void {
+		$reflection = new \ReflectionClass( $printer );
+
+		$linkFirst = $reflection->getProperty( 'mLinkFirst' );
+		$linkFirst->setAccessible( true );
+		$linkFirst->setValue( $printer, $linked );
+
+		$linkOthers = $reflection->getProperty( 'mLinkOthers' );
+		$linkOthers->setAccessible( true );
+		$linkOthers->setValue( $printer, $linked );
+	}
+
+	private function newWikiPageValueWithDisplayTitle( string $text, string $html, string $sortKey, string $displayTitle ): WikiPageValue {
+		$dataItem = $this->createStub( DIWikiPage::class );
+		$dataItem->method( 'getSortKey' )->willReturn( $sortKey );
+
+		$dataValue = $this->createStub( WikiPageValue::class );
+		$dataValue->method( 'getDataItem' )->willReturn( $dataItem );
+		$dataValue->method( 'getShortWikiText' )->willReturn( $text );
+		$dataValue->method( 'getShortHTMLText' )->willReturn( $html );
+		$dataValue->method( 'getDisplayTitle' )->willReturn( $displayTitle );
+
+		return $dataValue;
 	}
 
 	/**

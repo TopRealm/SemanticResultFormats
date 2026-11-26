@@ -54,6 +54,9 @@ use SMWOutputs;
  */
 class Filtered extends ResultPrinter {
 
+	/** Prefix of the JS config var that carries the configuration of one instance. */
+	public const CONFIG_VAR_PREFIX = 'srfFilteredConfig-';
+
 	/**
 	 * The available view types
 	 *
@@ -100,6 +103,24 @@ class Filtered extends ResultPrinter {
 	public function getParser() {
 		if ( $this->parser === null ) {
 			$this->setParser( MediaWikiServices::getInstance()->getParser() );
+		}
+
+		// The shared Parser service may not have been initialized via parse()/
+		// startExternalParse() yet (e.g. in Special:Ask or REST API contexts),
+		// in which case entry points like recursiveTagParse() crash on
+		// uninitialized internal state. Rather than initializing (and thereby
+		// mutating) the shared service instance for the rest of the request,
+		// use a dedicated Parser instance so other consumers of the shared
+		// Parser are unaffected. See issue #802.
+		if ( $this->parser->getOptions() === null ) {
+			$context = \RequestContext::getMain();
+			$parser = MediaWikiServices::getInstance()->getParserFactory()->create();
+			$parser->startExternalParse(
+				$context->getTitle(),
+				\ParserOptions::newFromContext( $context ),
+				\Parser::OT_HTML
+			);
+			$this->setParser( $parser );
 		}
 
 		return $this->parser;
@@ -264,23 +285,24 @@ class Filtered extends ResultPrinter {
 		return ( $force ) ? $this->mLinker : parent::getLinker( $firstcol );
 	}
 
+	/**
+	 * Every instance publishes its configuration under its own JS config var
+	 * (`srfFilteredConfig-<id>`). A shared key would make MediaWiki reject the
+	 * second instance on a page ("Multiple conflicting values", #1039), and
+	 * ParserOutput data is the only channel that also reaches the parse API
+	 * which SMW uses to load `@deferred` queries.
+	 */
 	private function addConfigToOutput( $id, $config ) {
+		$key = self::CONFIG_VAR_PREFIX . $id;
 		$parserOutput = $this->getParser()->getOutput();
+
 		if ( $parserOutput !== null ) {
-			$previousConfig = $parserOutput->getExtensionData( 'srf-filtered-config' ) ?? [];
-			$previousConfig[$id] = $config;
-			$parserOutput->setExtensionData( 'srf-filtered-config', $previousConfig );
-			$parserOutput->setJsConfigVar( 'srfFilteredConfig', $previousConfig );
+			$parserOutput->setJsConfigVar( $key, $config );
 		} else {
 			// Fallback for Special:Ask and other contexts where the parser has not been
 			// initialized with a ParserOutput (Parser::getOutput() returns null before
 			// initialization, deprecated since MW 1.42 — see #362).
-			// Config data is stored on OutputPage instead of ParserOutput.
-			$output = \RequestContext::getMain()->getOutput();
-			$previousConfig = $output->getProperty( 'srf-filtered-config' ) ?? [];
-			$previousConfig[$id] = $config;
-			$output->setProperty( 'srf-filtered-config', $previousConfig );
-			$output->addJsConfigVars( 'srfFilteredConfig', $previousConfig );
+			\RequestContext::getMain()->getOutput()->addJsConfigVars( $key, $config );
 		}
 	}
 
@@ -351,6 +373,10 @@ class Filtered extends ResultPrinter {
 
 			if ( $printRequest->getData() instanceof PropertyValue ) {
 				$prConfig['property'] = $printRequest->getData()->getInceptiveProperty()->getKey();
+
+			// @see SMW\Query\Result\ResultArray -> getNextDataValue
+			} elseif ( $prConfig['mode'] === PrintRequest::PRINT_CHAIN ) {
+				$prConfig['property'] = $printRequest->getData()->getLastPropertyChainValue()->getDataItem()->getKey();
 			}
 
 			if ( filter_var( $printRequest->getParameter( 'hide' ), FILTER_VALIDATE_BOOLEAN ) ) {

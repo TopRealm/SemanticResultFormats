@@ -2,6 +2,7 @@
 
 namespace SRF\Filtered;
 
+use SMW\DataValues\WikiPageValue;
 use SMW\DIWikiPage;
 use SMW\Query\Result\ResultArray;
 use SMWDataValue;
@@ -90,9 +91,17 @@ class ResultItem {
 				}
 
 				if ( $dataValue instanceof SMWErrorValue ) {
-					$formatted[] = $dataItem->getSerialization();
+					// the invalid input as typed on the page; the formatted value is HTML
+					$formatted[] = htmlspecialchars( $dataItem->getSerialization() );
 				} else {
-					$formatted[] = $dataValue->getShortHTMLText( $this->mQueryPrinter->getLinker( $isFirstColumn ) );
+					$linker = $this->mQueryPrinter->getLinker( $isFirstColumn );
+					$displayTitle = $dataValue instanceof WikiPageValue ? $dataValue->getDisplayTitle() : '';
+
+					if ( $linker === null && $displayTitle !== '' ) {
+						$formatted[] = $displayTitle;
+					} else {
+						$formatted[] = $dataValue->getShortHTMLText( $linker );
+					}
 				}
 			}
 

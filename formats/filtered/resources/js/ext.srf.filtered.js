@@ -29860,13 +29860,17 @@ class DistanceFilter extends Filter_1.Filter {
         super(...arguments);
         this.earthRadiusValue = DistanceFilter.earthRadius.km;
         this.filterValue = 0;
+        this.hasOrigin = false;
     }
     init() {
         let origin = this.options['origin'];
         if (!(origin !== undefined && origin.hasOwnProperty('lat') && origin.hasOwnProperty('lng'))) {
+            // no usable origin (the server has reported it): without distances there is nothing to
+            // filter by, so the filter must not hide any rows
             this.target.detach();
             return;
         }
+        this.hasOrigin = true;
         let unit = 'km';
         if (this.options['unit'] && DistanceFilter.earthRadius[this.options['unit']]) {
             unit = this.options['unit'];
@@ -29956,6 +29960,9 @@ class DistanceFilter extends Filter_1.Filter {
         return this.earthRadiusValue * 2 * Math.atan2(Math.sqrt(f), Math.sqrt(1 - f));
     }
     isVisible(rowId) {
+        if (!this.hasOrigin) {
+            return true;
+        }
         let rowdata = this.controller.getData()[rowId].d;
         if (rowdata && rowdata.hasOwnProperty(this.filterId)) {
             return rowdata[this.filterId].distance <= this.filterValue;
@@ -30055,7 +30062,8 @@ class Filter {
     }
     addLabel() {
         // insert the label of the printout this filter filters on
-        this.target.before(`<div class="filtered-filter-label">${this.options['label']}</div>`);
+        // the label is plain text from the wiki page, never markup
+        this.target.before($('<div class="filtered-filter-label">').text(this.options['label']));
     }
     addOnOffSwitch() {
         if (this.options.hasOwnProperty('switches')) {
@@ -30217,8 +30225,8 @@ class NumberFilter extends Filter_1.Filter {
         let sliderContainer = $(`<div class="filtered-number-slider ${filterClassNames[this.mode]}" />`).append(slider);
         filtercontrols.append(sliderContainer);
         if (this.options.hasOwnProperty('caption')) {
-            let caption = `<div class="filtered-number-caption">${this.options['caption']}</div>`;
-            filtercontrols.append(caption);
+            // the caption is the plain-text output format of the printout, never markup
+            filtercontrols.append($('<div class="filtered-number-caption">').text(this.options['caption']));
         }
         mw.loader.using('ext.srf.filtered.slider').then(() => slider.ionRangeSlider(sliderOptions));
     }
@@ -30346,9 +30354,9 @@ class ValueFilter extends Filter_1.Filter {
         let distinctSortValues = {};
         if (this.options.hasOwnProperty('values')) {
             return this.options['values'].map((item) => {
+                // no formatted value: the item is plain text and is escaped when shown
                 return {
-                    printoutValue: item,
-                    formattedValue: item
+                    printoutValue: item
                 };
             });
         }
@@ -30401,7 +30409,16 @@ class ValueFilter extends Filter_1.Filter {
         let checkboxes = $('<div class="filtered-value-checkboxes" style="width: 100%;">');
         // insert options (checkboxes and labels)
         for (let value of this.values) {
-            checkboxes.append(`<div class="filtered-value-option"><label><input type="checkbox" value="${value.printoutValue}" ><div class="filtered-value-option-label">${value.formattedValue || value.printoutValue}</div></label></div>`);
+            // printoutValue is raw wikitext, so it must never be put into markup; the formatted
+            // value is HTML rendered by the server and is kept as is
+            const optionLabel = $('<div class="filtered-value-option-label">');
+            if (value.formattedValue) {
+                optionLabel.html(value.formattedValue);
+            }
+            else {
+                optionLabel.text(value.printoutValue);
+            }
+            checkboxes.append($('<div class="filtered-value-option">').append($('<label>').append($('<input type="checkbox">').val(value.printoutValue), optionLabel)));
         }
         // attach event handler
         checkboxes
@@ -30412,9 +30429,9 @@ class ValueFilter extends Filter_1.Filter {
         return checkboxes;
     }
     stripHtml(str) {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = str;
-        return tmp.textContent || tmp.innerText || '';
+        // DOMParser yields an inert document: unlike innerHTML on a detached element it
+        // does not load images or run event handlers while the markup is stripped
+        return new DOMParser().parseFromString(str, 'text/html').body.textContent || '';
     }
     getSelected2Control() {
         let select = $('<select class="filtered-value-select" style="width: 100%;">');
@@ -30908,11 +30925,12 @@ class MapView extends View_1.View {
                 let slot = row.p[prId];
                 let formatted = (0, types_1.printoutFormattedValues)(slot);
                 if (title === undefined) {
-                    title = (0, types_1.printoutValues)(slot).join(', ');
-                    popup.push('<b>' + formatted.join(', ') + '</b>');
+                    title = (0, types_1.printoutValues)(slot).map(valueAsText).join(', ');
+                    popup.push('<b>' + formatted.map(valueAsText).join(', ') + '</b>');
                 }
                 else {
-                    popup.push((slot && slot.label ? '<b>' + slot.label + ':</b> ' : '') + formatted.join(', '));
+                    // the label belongs to the printout, not to the per-row slot
+                    popup.push((printrequest.label ? '<b>' + escapeHtml(printrequest.label) + ':</b> ' : '') + formatted.map(valueAsText).join(', '));
                 }
             }
         }
@@ -30954,6 +30972,10 @@ class MapView extends View_1.View {
     addGeoJsonOverlay(map) {
         if (!this.options.hasOwnProperty('geojson') || !this.options['geojson']) {
             return null;
+        }
+        // the icons are built together with the first marker; without any marker they do not exist yet
+        if (this.icon === undefined) {
+            this.buildIconList();
         }
         try {
             let layer = buildGeoJsonLayer(this.options['geojson'], this.icon['default']);
@@ -31023,7 +31045,16 @@ class MapView extends View_1.View {
         if (!mapProvider) {
             return [];
         }
-        return [{ label: escapeHtml(mapProvider), layer: L.tileLayer.provider(mapProvider) }];
+        try {
+            return [{ label: escapeHtml(mapProvider), layer: L.tileLayer.provider(mapProvider) }];
+        }
+        catch (error) {
+            // an unknown provider must not stop the map from being built
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('srf.filtered.map: skipping unknown map provider "' + mapProvider + '"', error);
+            }
+            return [];
+        }
     }
     getOptions(keys, defaults = {}) {
         for (let key of keys) {
@@ -31105,6 +31136,13 @@ function buildLayerControl(bases, overlays) {
 // simplestyle-spec properties (stroke/fill on paths) and rendering title/description feature
 // properties as popups. Ported minimally from the Maps extension's resources/leaflet/GeoJson.js;
 // point features use Leaflet's default marker (no marker-colour icon machinery).
+// A coordinate is stored as { lat, lng }; every other value is already text.
+function valueAsText(value) {
+    if (value !== null && typeof value === 'object' && 'lat' in value && 'lng' in value) {
+        return value.lat + ', ' + value.lng;
+    }
+    return String(value);
+}
 function buildGeoJsonLayer(geojson, markerIcon) {
     return L.geoJSON(geojson, {
         // The bundled Leaflet cannot auto-detect its default icon path, so point features get the
@@ -31292,7 +31330,8 @@ class ViewSelector {
     }
     static onSelectorSelected(event) {
         event.data.controller.onViewSelected(event.data.target);
-        $(event.target)
+        // currentTarget is the selector the handler is bound to; target may be markup inside its label
+        $(event.currentTarget)
             .addClass('selected')
             .siblings().removeClass('selected');
         event.stopPropagation();
@@ -31305,7 +31344,20 @@ exports.ViewSelector = ViewSelector;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const Filtered_1 = require("./Filtered/Filtered");
-let config = mw.config.get("srfFilteredConfig") || {};
+const CONFIG_VAR_PREFIX = "srfFilteredConfig-";
+// Configs seen so far. SMW replaces mw.config entries when a deferred query is
+// loaded, so they are accumulated here instead of being re-read from scratch.
+const knownConfigs = {};
+function collectConfigs() {
+    // legacy: aggregated config of pages cached before the per-instance vars
+    Object.assign(knownConfigs, mw.config.get("srfFilteredConfig") || {});
+    Object.keys(mw.config.values).forEach(key => {
+        if (key.indexOf(CONFIG_VAR_PREFIX) === 0) {
+            knownConfigs[key.slice(CONFIG_VAR_PREFIX.length)] = mw.config.get(key);
+        }
+    });
+    return knownConfigs;
+}
 function initItems(cfg, root) {
     Object.keys(cfg).forEach(id => {
         const selector = root ? root.find("#" + id) : $("#" + id);
@@ -31320,9 +31372,9 @@ function initItems(cfg, root) {
         f.run();
     });
 }
-initItems(config);
+initItems(collectConfigs());
 mw.hook("smw.deferred.query").add((container) => {
-    const cfg = mw.config.get("srfFilteredConfig") || {};
+    const cfg = collectConfigs();
     container.find(".filtered-spinner").hide();
     container.find(".filtered-views").show();
     container.find(".filtered-filters").show();

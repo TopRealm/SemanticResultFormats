@@ -20,11 +20,12 @@ export class ViewSelector {
 		}
 	}
 
-	private static onSelectorSelected( event: JQueryEventObject ) {
+	private static onSelectorSelected( event: JQuery.TriggeredEvent ) {
 
 		event.data.controller.onViewSelected( event.data.target );
 
-		$( event.target )
+		// currentTarget is the selector the handler is bound to; target may be markup inside its label
+		$( event.currentTarget )
 		.addClass( 'selected')
 		.siblings().removeClass( 'selected' );
 

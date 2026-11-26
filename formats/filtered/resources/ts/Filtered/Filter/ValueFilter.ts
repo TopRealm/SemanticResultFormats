@@ -32,9 +32,9 @@ export class ValueFilter extends Filter {
 
 			return this.options[ 'values' ].map(
 				( item: string ) => {
+					// no formatted value: the item is plain text and is escaped when shown
 					return {
-						printoutValue: item,
-						formattedValue: item
+						printoutValue: item
 					};
 				}
 			);
@@ -108,12 +108,25 @@ export class ValueFilter extends Filter {
 
 		// insert options (checkboxes and labels)
 		for ( let value of this.values ) {
-			checkboxes.append( `<div class="filtered-value-option"><label><input type="checkbox" value="${value.printoutValue}" ><div class="filtered-value-option-label">${value.formattedValue || value.printoutValue}</div></label></div>` );
+			// printoutValue is raw wikitext, so it must never be put into markup; the formatted
+			// value is HTML rendered by the server and is kept as is
+			const optionLabel = $( '<div class="filtered-value-option-label">' );
+			if ( value.formattedValue ) {
+				optionLabel.html( value.formattedValue );
+			} else {
+				optionLabel.text( value.printoutValue );
+			}
+
+			checkboxes.append(
+				$( '<div class="filtered-value-option">' ).append(
+					$( '<label>' ).append( $( '<input type="checkbox">' ).val( value.printoutValue ), optionLabel )
+				)
+			);
 		}
 
 		// attach event handler
 		checkboxes
-		.on( 'change', ':checkbox', ( eventObject: JQueryEventObject ) => {
+		.on( 'change', ':checkbox', ( eventObject: JQuery.TriggeredEvent ) => {
 			let checkboxElement = <HTMLInputElement> eventObject.currentTarget;
 			this.onFilterUpdated( checkboxElement.value, checkboxElement.checked );
 		} );
@@ -122,9 +135,9 @@ export class ValueFilter extends Filter {
 	}
 
 	private stripHtml(str: string): string {
-		const tmp = document.createElement('div');
-		tmp.innerHTML = str;
-		return tmp.textContent || tmp.innerText || '';
+		// DOMParser yields an inert document: unlike innerHTML on a detached element it
+		// does not load images or run event handlers while the markup is stripped
+		return new DOMParser().parseFromString( str, 'text/html' ).body.textContent || '';
 	}
 
 	private getSelected2Control() {
@@ -180,7 +193,7 @@ export class ValueFilter extends Filter {
 
 			andorControl
 			.find( 'input' )
-			.on( 'change', undefined, { 'filter': this }, ( eventObject: JQueryEventObject ) =>
+			.on( 'change', undefined, { 'filter': this }, ( eventObject: JQuery.TriggeredEvent ) =>
 				eventObject.data.filter.useOr( eventObject.target.getAttribute( 'value' ) === 'or' )
 			);
 
